@@ -299,9 +299,11 @@ class ModBuilder:
 class ValidateDirectoryAndContents(argparse.Action):
     """Verify that project dir exists and contains required files"""
     def __call__(self, parser, namespace, values, option_string=None):
-        if values != "bar":
-            print("Got value:", values)
-            raise argparse.ArgumentError(self, 'Not a bar')
+        path = Path(values)
+        if (values == '') or not (path.exists() and path.is_dir()):
+            print("Provided path:", values)
+            raise argparse.ArgumentError(self, 'Not a valid directory path.')
+        # Should also validate that all required contents are present here
         setattr(namespace, self.dest, values)
 
 
