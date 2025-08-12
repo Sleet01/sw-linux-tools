@@ -1,18 +1,19 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["rich", "click"]
+# dependencies = ["rich", "mypy"]
 # ///
 
-import click
-import subprocess
+import argparse
+import asyncio
 import os
-from rich import print as rprint
-from pathlib import Path
 import shutil
+import subprocess
+import sys
 import tomllib
 from dataclasses import dataclass
-import sys
-import asyncio
+from typing import List, Optional
+from pathlib import Path
+from rich import print as rprint
 from rich.progress import Progress
 
 MESH_COMPILER_CMD = ["/home/deck/.local/share/Steam/steamapps/common/Proton 9.0 (Beta)/proton", "run", "/home/deck/.steam/steam/steamapps/common/Stormworks/sdk/mesh_compiler.com"]
@@ -24,7 +25,6 @@ def set_env():
     env["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = "/home/deck/.steam/root/steamapps"
     env["STEAM_COMPAT_DATA_PATH"] = "/home/deck/.steam/root/steamapps/compatdata/573090"
     return env
-
 
 @dataclass
 class Config:
@@ -107,7 +107,7 @@ class ModBuilder:
         Path(f"{self.config.output_path}/data").mkdir(parents=False, exist_ok=False)
         Path(f"{self.config.output_path}/data/components").mkdir(parents=False, exist_ok=False)
 
-    async def _compile_mesh(self, filename: str, output_base_path: str) -> int:
+    async def _compile_mesh(self, filename: str, output_base_path: str) -> Optional[int]:
         cmd = MESH_COMPILER_CMD + [filename] + ["-o", output_base_path]
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -139,7 +139,8 @@ class ModBuilder:
                     task = asyncio.create_task(self._compile_mesh(filename=f"{legacy_meshes_dir}/{filename}", output_base_path=mesh_build_path), name=filename)
                     tasks.append(task)
 
-                async for task in asyncio.as_completed(tasks):
+                # MyPy has a bug where it cannot find a matching type between async iterators and generators, despite this working explicitly as intended
+                async for task in asyncio.as_completed(tasks): # type: ignore[attr-defined]
                     progress.console.print(f"Compiled mesh: [yellow]{task.get_name()}[/yellow]")
                     progress.update(progress_task, advance=1)
 
@@ -156,7 +157,7 @@ class ModBuilder:
             rprint("Copying legacy definition files...")
             self._copy_assets(source_dir=legacy_definitions_dir, target_dir=f"{self.config.output_path}/data/definitions", filetype="xml")
 
-    async def _compile_component_mesh(self, filename: str, component_build_path: str) -> int:
+    async def _compile_component_mesh(self, filename: str, component_build_path: str) -> Optional[int]:
         cmd = MESH_COMPILER_CMD + [filename] + ["-o", component_build_path]
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -167,7 +168,7 @@ class ModBuilder:
         stdout, stderr = await process.communicate()
         return process.returncode
 
-    async def _compile_component_bin(self, definition_file: str, assets: list[str], component_build_path: str) -> int:
+    async def _compile_component_bin(self, definition_file: str, assets: list[str], component_build_path: str) -> Optional[int]:
         cmd = MOD_COMPILER_CMD + [definition_file] + [*assets]
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -295,15 +296,34 @@ class ModBuilder:
         self._clear_build_cache()
         rprint(f"Done! Output is saved to the [bold yellow]build/{self.config.build_name}[/bold yellow] directory.")
 
+def parse_args(argv: List[str]) -> argparse.Namespace:
+    """                                                                                                      
+    Parse argv object for CLI arguments.                                                                     
+    """                                                                                                      
+                                                                                                             
+    desc = 'Builds a SW mod from a directory'
+    epi = f'Example: \n\t{sys.argv[0]} <project dir>'
+                                                                                                             
+    parser = argparse.ArgumentParser(description=desc, epilog=epi)
+    parser.add_argument(
+            "project_dir",
+            type=str,
+            required=True,
+            help='File containing mesh and mod definitions',
+    )
+                                                                                                             
+    args = parser.parse_args(argv)                                                                           
+                                                                                                             
+    return args
 
-@click.command()
-@click.argument("project_dir", type=click.Path(exists=True))
-def build(project_dir: str):
+def build(args: argparse.Namespace) -> int:
+    project_dir: str = args.project_dir
     config = _load_config(project_dir)
 
     builder = ModBuilder(config)
     asyncio.run(builder.run())
-
+    
+    return 0
 
 if __name__ == '__main__':
-    build()
+    sys.exit(build(parse_args(sys.argv[1:])))
