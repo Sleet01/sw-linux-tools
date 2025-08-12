@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["rich", "mypy", "typing"]
+# dependencies = ["rich", "mypy"]
 # ///
 
 import argparse
