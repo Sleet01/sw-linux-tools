@@ -295,6 +295,16 @@ class ModBuilder:
         self._clear_build_cache()
         rprint(f"Done! Output is saved to the [bold yellow]build/{self.config.build_name}[/bold yellow] directory.")
 
+
+class ValidateDirectoryAndContents(argparse.Action):
+    """Verify that project dir exists and contains required files"""
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values != "bar":
+            print("Got value:", values)
+            raise argparse.ArgumentError(self, 'Not a bar')
+        setattr(namespace, self.dest, values)
+
+
 def parse_args(argv: List[str]) -> argparse.Namespace:
     """                                                                                                      
     Parse argv object for CLI arguments.                                                                     
@@ -307,12 +317,14 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument(
             "project_dir",
             type=str,
+            action=ValidateDirectoryAndContents,
             help='File containing mesh and mod definitions',
     )
                                                                                                              
     args = parser.parse_args(argv)                                                                           
                                                                                                              
     return args
+
 
 def build(args: argparse.Namespace) -> int:
     project_dir: str = args.project_dir
@@ -322,6 +334,7 @@ def build(args: argparse.Namespace) -> int:
     asyncio.run(builder.run())
     
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(build(parse_args(sys.argv[1:])))
