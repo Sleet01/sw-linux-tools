@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # /// script
 # requires-python = ">=3.11"
 # dependencies = ["rich", "mypy"]
@@ -12,14 +14,24 @@ from typing import List
 from pathlib import Path
 from rich import print as rprint
 
-def set_env():
-    env = os.environ.copy()
-    env["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = "/home/deck/.steam/root/steamapps"
-    env["STEAM_COMPAT_DATA_PATH"] = "/home/deck/.steam/root/steamapps/compatdata/573090"
-    return env
+from constants import (
+    MESH_COMPILER_CMD,
+    MOD_COMPILER_CMD
+)
 
-MOD_COMPILER_CMD = ["/home/deck/.local/share/Steam/steamapps/common/Proton 9.0 (Beta)/proton", "run", "/home/deck/.steam/steam/steamapps/common/Stormworks/sdk/component_mod_compiler.com"]
-MESH_COMPILER_CMD = ["/home/deck/.local/share/Steam/steamapps/common/Proton 9.0 (Beta)/proton", "run", "/home/deck/.steam/steam/steamapps/common/Stormworks/sdk/mesh_compiler.com"]
+from env_config import set_env
+
+
+class ValidateDefinitionFile(argparse.Action):
+    """Verify that project dir exists and contains required files"""
+    def __call__(self, parser, namespace, values, option_string=None):
+        path = Path(values)
+        if (values == '') or not (path.exists() and path.is_file()):
+            print("Provided path:", values)
+            raise argparse.ArgumentError(self, 'Not a valid definition file.')
+        # Should also validate that all required contents are present here
+        setattr(namespace, self.dest, values)
+
 
 def parse_args(argv: List[str]) -> argparse.Namespace:
     """                                                                                                      
@@ -31,15 +43,16 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
                                                                                                              
     parser = argparse.ArgumentParser(description=desc, epilog=epi)
     parser.add_argument(
-            "definition",
-            type=str,
-            required=True,
-            help='File containing mesh and mod definitions',
+        "definition",
+        type=str,
+        action=ValidateDefinitionFile,
+        help='File containing mesh and mod definitions',
     )
                                                                                                              
     args = parser.parse_args(argv)                                                                           
                                                                                                              
     return args
+
 
 def _compile_mesh(mesh_path: str) -> None:
     rprint(f"Compiling mesh [bold]{mesh_path}[/bold]...")
@@ -48,6 +61,7 @@ def _compile_mesh(mesh_path: str) -> None:
     subprocess.run(MESH_COMPILER_CMD + [mesh_path] + ["-o", base_path], env=set_env(), capture_output=True)
     output_path = f"{base_path}/{filename}"
     rprint(f"Successfully compiled mesh: [bold]{output_path}[/bold]")
+
 
 def _compile_mod(definition: str, assets: List[str]):
     rprint("Compiling mod...")
@@ -65,6 +79,7 @@ def _compile_mod(definition: str, assets: List[str]):
         rprint(f"Output saved to: [bold]{output_path}[/bold]")
     else:
         rprint("Failed to compile mod.")
+
 
 def compile(args: argparse.Namespace) -> int:
     result: int = 0

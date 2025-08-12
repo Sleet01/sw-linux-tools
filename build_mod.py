@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # /// script
 # requires-python = ">=3.11"
 # dependencies = ["rich", "mypy"]
@@ -16,15 +18,12 @@ from pathlib import Path
 from rich import print as rprint
 from rich.progress import Progress
 
-MESH_COMPILER_CMD = ["/home/deck/.local/share/Steam/steamapps/common/Proton 9.0 (Beta)/proton", "run", "/home/deck/.steam/steam/steamapps/common/Stormworks/sdk/mesh_compiler.com"]
-MOD_COMPILER_CMD = ["/home/deck/.local/share/Steam/steamapps/common/Proton 9.0 (Beta)/proton", "run", "/home/deck/.steam/steam/steamapps/common/Stormworks/sdk/component_mod_compiler.com"]
+from constants import (
+    MESH_COMPILER_CMD,
+    MOD_COMPILER_CMD
+)
 
-
-def set_env():
-    env = os.environ.copy()
-    env["STEAM_COMPAT_CLIENT_INSTALL_PATH"] = "/home/deck/.steam/root/steamapps"
-    env["STEAM_COMPAT_DATA_PATH"] = "/home/deck/.steam/root/steamapps/compatdata/573090"
-    return env
+from env_config import set_env
 
 @dataclass
 class Config:
@@ -296,6 +295,18 @@ class ModBuilder:
         self._clear_build_cache()
         rprint(f"Done! Output is saved to the [bold yellow]build/{self.config.build_name}[/bold yellow] directory.")
 
+
+class ValidateDirectoryAndContents(argparse.Action):
+    """Verify that project dir exists and contains required files"""
+    def __call__(self, parser, namespace, values, option_string=None):
+        path = Path(values)
+        if (values == '') or not (path.exists() and path.is_dir()):
+            print("Provided path:", values)
+            raise argparse.ArgumentError(self, 'Not a valid directory path.')
+        # Should also validate that all required contents are present here
+        setattr(namespace, self.dest, values)
+
+
 def parse_args(argv: List[str]) -> argparse.Namespace:
     """                                                                                                      
     Parse argv object for CLI arguments.                                                                     
@@ -308,13 +319,14 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     parser.add_argument(
             "project_dir",
             type=str,
-            required=True,
+            action=ValidateDirectoryAndContents,
             help='File containing mesh and mod definitions',
     )
                                                                                                              
     args = parser.parse_args(argv)                                                                           
                                                                                                              
     return args
+
 
 def build(args: argparse.Namespace) -> int:
     project_dir: str = args.project_dir
@@ -324,6 +336,7 @@ def build(args: argparse.Namespace) -> int:
     asyncio.run(builder.run())
     
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(build(parse_args(sys.argv[1:])))
