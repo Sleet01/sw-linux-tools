@@ -13,6 +13,7 @@ import sys
 from typing import List
 from pathlib import Path
 from rich import print as rprint
+from rich.pretty import pprint
 
 from constants import (
     MESH_COMPILER_CMD,
@@ -77,8 +78,14 @@ def _compile_mod(definition: str, assets: List[str]):
         for asset in [definition] + assets:
             rprint(f"  • [bold]{asset}[/bold]")
         rprint(f"Output saved to: [bold]{output_path}[/bold]")
+        return 0
     else:
         rprint("Failed to compile mod.")
+        rprint(f"Args: {result.args}")
+        rprint(f"Exit code: {result.returncode}")
+        rprint(f"stdout: {str(result.stdout, 'utf-8')}")
+        rprint(f"stderr: {str(result.stderr, 'utf-8')}")
+        return result.returncode
 
 
 def compile(args: argparse.Namespace) -> int:
@@ -101,7 +108,7 @@ def compile(args: argparse.Namespace) -> int:
 
         # Compile the mod itself
         asset_files = mesh_files + lua_files + ogg_files
-        _compile_mod(definition=definition, assets=asset_files)
+        result = _compile_mod(definition=definition, assets=asset_files)
     except:
         result = 1
 

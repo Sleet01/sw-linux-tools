@@ -9,7 +9,7 @@ USER_HOME_PATH = Path.home()
 # STEAM_PATH = "/home/deck/.local/share/Steam" # for Steam Deck
 STEAM_PATH = PurePath(USER_HOME_PATH, ".steam/steam")
 # STEAM_ROOT_PATH = "/home/deck/.steam/root" # for Steam Deck
-STEAM_ROOT_PATH = PurePath(USER_HOME_PATH, ".steam/root")
+STEAM_ROOT_PATH = PurePath(USER_HOME_PATH, ".steam/steam")
 
 ### Proton-related paths
 # PROTON_VERSION = "Proton 9.0 (Beta)" # for Steam Deck
@@ -22,5 +22,5 @@ MESH_COMPILER_PATH = PurePath(SDK_PATH, "mesh_compiler.com")
 MOD_COMPILER_PATH = PurePath(SDK_PATH, "component_mod_compiler.com") 
 
 ### Commands to run the two compilers; require set_env from env_config.py to run
-MESH_COMPILER_CMD: List[Union[PathLike, str]] = [PROTON_PATH, "run", MESH_COMPILER_PATH]
-MOD_COMPILER_CMD: List[Union[PathLike, str]] = [PROTON_PATH, "run", MOD_COMPILER_PATH]
+MESH_COMPILER_CMD: List[Union[PathLike, str]] = [PROTON_PATH, "runinprefix", MESH_COMPILER_PATH]
+MOD_COMPILER_CMD: List[Union[PathLike, str]] = [PROTON_PATH, "runinprefix", MOD_COMPILER_PATH]
