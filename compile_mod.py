@@ -5,6 +5,9 @@
 # dependencies = ["rich", "mypy"]
 # ///
 
+# sleet01
+# all credit to sprrk for their prior work
+
 import argparse
 import os
 import subprocess
@@ -47,7 +50,7 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
         "definition",
         type=str,
         action=ValidateDefinitionFile,
-        help='File containing mesh and mod definitions',
+        help='Path to file containing mod definition',
     )
                                                                                                              
     args = parser.parse_args(argv)                                                                           
@@ -77,7 +80,7 @@ def _compile_mod(definition: str, assets: List[str]):
         rprint("Successfully compiled mod with assets:")
         for asset in [definition] + assets:
             rprint(f"  • [bold]{asset}[/bold]")
-        rprint(f"Output saved to: [bold]{output_path}[/bold]")
+        rprint(f"Output saved to: [bold]./{output_path}[/bold]")
         return 0
     else:
         rprint("Failed to compile mod.")
@@ -92,24 +95,31 @@ def compile(args: argparse.Namespace) -> int:
     result: int = 0
     try:
         definition: str = args.definition
-        path = "/".join(definition.split("/")[:-1])
+
+        # Get path to definition file
+        path = os.path.dirname(definition)
         files = os.listdir(path)
-        xml_file = definition
 
-        lua_files = [f"{path}/{x}" for x in files if x.endswith(".lua")]
-        ogg_files = [f"{path}/{x}" for x in files if x.endswith(".ogg")]
-        dae_files = [f"{path}/{x}" for x in files if x.endswith(".dae")]
+        # All asset paths have to omit paths; for this reason, files must be in the
+        # definition file's directory
+        lua_files = [f"{x}" for x in files if x.endswith(".lua")]
+        ogg_files = [f"{x}" for x in files if x.endswith(".ogg")]
+        dae_files = [f"{x}" for x in files if x.endswith(".dae")]
+        txtr_files = [f"{x}" for x in files if x.endswith(".txtr")]
 
-        # Compile meshes first
-        mesh_files = []
+        # Compile meshes first; update file listing afterward
         for dae_file in dae_files:
             _compile_mesh(dae_file)
-            mesh_files.append(dae_file.replace('.dae', '.mesh'))
+            files = os.listdir(path)
+
+        # Collect mesh files
+        mesh_files = [f"{x}" for x in files if x.endswith(".mesh")]
 
         # Compile the mod itself
-        asset_files = mesh_files + lua_files + ogg_files
+        asset_files = mesh_files + txtr_files + lua_files + ogg_files
         result = _compile_mod(definition=definition, assets=asset_files)
-    except:
+    except Exception as e:
+        rprint(f"Error: {str(e)}")
         result = 1
 
     return result
