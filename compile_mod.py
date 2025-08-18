@@ -60,12 +60,16 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
 
 def _compile_mesh(mesh_path: str) -> None:
     rprint(f"Compiling mesh [bold]{mesh_path}[/bold]...")
-    base_path = "/".join(mesh_path.split("/")[:-1])
-    filename = mesh_path.split("/")[-1].replace(".dae", ".mesh")
-    subprocess.run(MESH_COMPILER_CMD + [mesh_path] + ["-o", base_path], env=set_env(), capture_output=True)
-    output_path = f"{base_path}/{filename}"
-    rprint(f"Successfully compiled mesh: [bold]{output_path}[/bold]")
-
+    filename = mesh_path.replace(".dae", ".mesh")
+    result = subprocess.run(MESH_COMPILER_CMD + [mesh_path] + ["-o", "./"], env=set_env(), capture_output=True)
+    if os.path.exists(filename):
+        rprint(f"Successfully compiled mesh: [bold]{filename}[/bold]")
+    else:
+        rprint("Failed to compile mesh.")
+        rprint(f"Args: {result.args}")
+        rprint(f"Exit code: {result.returncode}")
+        rprint(f"stdout: {str(result.stdout, 'utf-8')}")
+        rprint(f"stderr: {str(result.stderr, 'utf-8')}")
 
 def _compile_mod(definition: str, assets: List[str]):
     rprint("Compiling mod...")
